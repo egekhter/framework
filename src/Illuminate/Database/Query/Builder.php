@@ -1424,6 +1424,20 @@ class Builder {
 		return $this->cacheKey ?: $this->generateCacheKey();
 	}
 
+
+	public function getOpt()
+    {
+        $sql = $this->grammar->compileSelect($this);
+        $bindings = $this->getBindings($this);
+        foreach ($bindings as $b)
+        {
+            $sql = preg_replace('/\?/', $b, $sql, 1);
+        }
+
+        return $this->connection->select($sql);
+
+    }
+
 	/**
 	 * Generate the unique cache key for the query.
 	 *
