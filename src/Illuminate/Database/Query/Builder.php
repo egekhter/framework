@@ -1431,6 +1431,8 @@ class Builder {
         $bindings = $this->getBindings($this);
         foreach ($bindings as $b)
         {
+        	$b = bin2hex($b);
+            $b = "UNHEX('{$b}')";
             $sql = preg_replace('/\?/', $b, $sql, 1);
         }
 
