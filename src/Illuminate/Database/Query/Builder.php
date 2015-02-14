@@ -1429,12 +1429,97 @@ class Builder {
     {
         $sql = $this->grammar->compileSelect($this);
         $bindings = $this->getBindings($this);
-        foreach ($bindings as $b)
+
+        $sql_array = str_split($sql);
+        $sql_array_len = count($sql_array);
+
+        //keys - a = std char, b = std where, c = begin wherein, d = continuation of wherein, e = end of wherein
+        $sql_map_bind = [];
+
+        $running_dist = 0;
+
+        foreach ($sql_array as $i => $sl)
         {
-        	$b = bin2hex($b);
-            $b = "UNHEX('{$b}')";
-            $sql = preg_replace('/\?/', $b, $sql, 1);
+            if ($sl === '?')
+            {
+                if ($i !== $sql_array_len -1) //can't look ahead on last iteration
+                {
+                    if ($sql_array[$i-1] === '(')
+                    {
+                        $sql_map_bind[] = ['c' => $i - $running_dist];
+                    }
+                    elseif ($sql_array[$i+1] === ',')
+                    {
+                        $sql_map_bind[] = ['d' => $i - $running_dist];
+                    }
+                    elseif ($sql_array[$i+1] === ')')
+                    {
+                        $sql_map_bind[] = ['e' => $i - $running_dist];
+                    }
+                    elseif ($sql_array[$i-1] === ' ')
+                    {
+                        $sql_map_bind[] = ['b' => $i - $running_dist];
+                    }
+                }
+                else
+                {
+                    $sql_map_bind[] = ['b' => $i - $running_dist];
+                }
+
+                $running_dist = $i;
+
+            }
         }
+
+        unset($sql_array);
+
+        //equation variables
+        $current_index = 0;
+        $current_dist = 0;
+        $prev_bin_len = 0;
+
+        $length_replace = 1;
+
+        foreach ($bindings as $i => $b)
+        {
+            $b = bin2hex($b);
+            $b = "UNHEX('{$b}')";
+            $b_len = strlen($b);
+
+            //we already know distance to add for initial index
+            if ($i === 0) //start
+            {
+                $current_index = array_values($sql_map_bind[$i])[0];
+            }
+            else //all but index 0
+            {
+                if (key($sql_map_bind[$i]) === 'd')
+                {
+                    $current_dist = 2;
+                }
+                elseif(key($sql_map_bind[$i]) === 'b')
+                {
+                    $current_dist = array_values($sql_map_bind[$i])[0] - 1;
+                }
+                elseif(key($sql_map_bind[$i]) === 'c')
+                {
+                    $current_dist = array_values($sql_map_bind[$i])[0] - 1;
+                }
+                elseif(key($sql_map_bind[$i]) === 'e')
+                {
+                    $current_dist = 2;
+                }
+
+                $current_index += ($current_dist + $prev_bin_len);
+
+            }
+
+            $sql = substr_replace($sql, $b, $current_index, $length_replace);
+
+            $prev_bin_len = $b_len;
+        }
+
+        unset($bindings, $sql_map_bind);
 
         return $this->connection->select($sql);
 
