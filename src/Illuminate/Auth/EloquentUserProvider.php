@@ -91,6 +91,8 @@ class EloquentUserProvider implements UserProviderInterface {
 			if ( ! str_contains($key, 'password')) $query->where($key, $value);
 		}
 
+        $query->whereNull('deleted_at');
+
 		return $query->first();
 	}
 
