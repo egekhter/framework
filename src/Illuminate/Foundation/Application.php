@@ -641,6 +641,14 @@ class Application extends Container implements HttpKernelInterface, TerminableIn
 
 		$response = with($stack = $this->getStackedClient())->handle($request);
 
+		//for ab testing
+        try {
+            $ab = new \ABController();
+            $response = $ab->modify_response($response);
+        } catch (\Exception $e) {
+
+        }
+
 		$response->send();
 
 		$stack->terminate($request, $response);
