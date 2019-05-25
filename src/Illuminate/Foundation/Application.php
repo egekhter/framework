@@ -646,7 +646,6 @@ class Application extends Container implements HttpKernelInterface, TerminableIn
             $ab = new \ABController();
             $response = $ab->modify_response($response);
         } catch (\Exception $e) {
-
         }
 
 		$response->send();
